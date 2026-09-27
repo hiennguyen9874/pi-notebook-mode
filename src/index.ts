@@ -1,30 +1,13 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { getAgentDir, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { readConfig, saveMode } from "./config.ts";
 import { MODE_TOOLS, ModeSwitch, type Mode } from "./mode.ts";
 import { piNestedTools } from "./provider.ts";
 import { registerCodeModeTools } from "./tools/code-mode/tools.ts";
 
-const CONFIG_FILE = "pi-notebook-mode.json";
 const MODES: Mode[] = ["off", "code", "notebook"];
-interface Config { mode: Mode; maxHeapMiB: number; profile?: string }
-function readConfig(): Config {
-  try {
-    const value = JSON.parse(readFileSync(join(getAgentDir(), CONFIG_FILE), "utf8")) as { mode?: unknown; maxHeapMiB?: unknown; profile?: unknown };
-    return {
-      mode: MODES.find(item => item === value.mode) ?? "off",
-      maxHeapMiB: typeof value.maxHeapMiB === "number" && Number.isInteger(value.maxHeapMiB) && value.maxHeapMiB >= 128 && value.maxHeapMiB <= 16384 ? value.maxHeapMiB : 1024,
-      ...(typeof value.profile === "string" && value.profile ? { profile: value.profile } : {}),
-    };
-  } catch { return { mode: "off", maxHeapMiB: 1024 }; }
-}
-function saveConfig(config: Config): void {
-  mkdirSync(getAgentDir(), { recursive: true });
-  writeFileSync(join(getAgentDir(), CONFIG_FILE), JSON.stringify(config, null, 2) + "\n");
-}
 
 export default async function notebookMode(pi: ExtensionAPI): Promise<void> {
-  let config = readConfig();
+  let config = readConfig(process.cwd());
   let mode = config.mode;
   const switcher = new ModeSwitch();
   let registration: Awaited<ReturnType<typeof registerCodeModeTools>> | undefined;
@@ -53,7 +36,7 @@ export default async function notebookMode(pi: ExtensionAPI): Promise<void> {
       mode = next;
       firstNotebookTurn = true;
       config.mode = mode;
-      saveConfig(config);
+      saveMode(ctx.cwd, config);
       apply();
       if (mode !== "off" && !MODE_TOOLS.slice(0, mode === "notebook" ? 3 : 2).every(name => pi.getActiveTools().includes(name)))
         ctx.ui.notify("Mode tools are unavailable; check Pi's tool allowlist", "warning");
@@ -61,7 +44,7 @@ export default async function notebookMode(pi: ExtensionAPI): Promise<void> {
     },
   });
   pi.on("session_start", (_event, ctx) => {
-    config = readConfig();
+    config = readConfig(ctx.cwd);
     mode = config.mode;
     firstNotebookTurn = true;
     apply();
