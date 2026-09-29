@@ -1,0 +1,222 @@
+{
+    "model": "deepseek-v4.1-flash",
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\n<tools>\n- exec: Compose tools with JavaScript\n- wait: Resume or terminate an exec cell\n- notebook: Inspect, recover, or control notebook state\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>\n\n<rules>\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>\n\n<docs>\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: /home/hiennx/.pi/agent/install/releases/0.87.1/node_modules/@earendil-works/pi-coding-agent/README.md\n- Additional docs: /home/hiennx/.pi/agent/install/releases/0.87.1/node_modules/@earendil-works/pi-coding-agent/docs\n- Examples: /home/hiennx/.pi/agent/install/releases/0.87.1/node_modules/@earendil-works/pi-coding-agent/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>\n\n<cwd>\n/home/hiennx/Documents/coding-agent/pi-notebook-mode\n</cwd>\n\n<notebook_mode_tools>\nTools available in exec:\n- await tools.bash({ command: string, timeout?: number })\n- await tools.edit({ path: string, oldText: string, newText: string })\n- await tools.find({ pattern: string, path?: string })\n- await tools.grep({ pattern: string, path?: string, glob?: string })\n- await tools.ls({ path?: string })\n- await tools.read({ path: string, offset?: number, limit?: number })\n- await tools.write({ path: string, content: string })\n</notebook_mode_tools>\n\n<notebook_mode_guidance>\nNotebook mode: exec runs persistent Deno TypeScript; bindings and imports survive across cells. Use text(value) to show output; wait for yielded cells. Use image(result) for image data returned by nested tools. Checkpoint before compaction and use notebook for status/recovery.\n</notebook_mode_guidance>\n\n<notebook_mode_status>\nNotebook example foo/bar available; inspect foo.description, foo.usage, bar.description, and bar.usage before constructing a reusable global. Available npm imports in this notebook: none. Ask before adding another, then use an exact-version npm: specifier. Inside exec tools.notebook supports status, list, diagnostics; all others use the top-level notebook tool after exec returns\nNotebook idle · 0 completed cells\nMemory 81.2 MiB heap used / 1.09 GiB limit · 231.2 MiB RSS\nCheckpoint current · 0 durable binding(s)\nRetained state 0 binding(s) · 0 B serialized · 0 pinned\nTop-level bindings: 0\nBindings matching \"*\":\n- none\n</notebook_mode_status>"
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "HI"
+                }
+            ]
+        }
+    ],
+    "stream": true,
+    "stream_options": {
+        "include_usage": true
+    },
+    "store": false,
+    "max_completion_tokens": 16384,
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "exec",
+                "description": "Run JavaScript to compose tools; source only, no JSON or fences\nRuntime follows the selected mode: Code is fresh restricted JS with no console/imports/Node/browser APIs; Notebook is one persistent Deno TypeScript global environment shared by every exec call, with console, imports, npm, Deno, and Web APIs\nOptional // @exec: {\"yield_time_ms\": 10000, \"max_output_tokens\": 1000}; defaults 30000 ms/10000 tokens\nAwait work; bare values are discarded; globals: tools, image, generatedImage, store, load, exit, setTimeout, clearTimeout, ALL_TOOLS; text(value) serializes output, notify(value) emits, yield_control() yields",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "code"
+                    ],
+                    "properties": {
+                        "code": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "wait",
+                "description": "Resume or terminate a yielded exec cell",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "cell_id"
+                    ],
+                    "properties": {
+                        "cell_id": {
+                            "type": "string"
+                        },
+                        "yield_time_ms": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 10000
+                        },
+                        "max_tokens": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100000,
+                            "default": 10000
+                        },
+                        "terminate": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "notebook",
+                "description": "Control persistent notebook state: status inspects memory/bindings by query glob; checkpoint; pin/unpin/release names; prune unpinned matches; list/save/load profiles; restart; diagnostics; reset",
+                "parameters": {
+                    "anyOf": [
+                        {
+                            "type": "object",
+                            "required": [
+                                "action"
+                            ],
+                            "properties": {
+                                "action": {
+                                    "type": "string",
+                                    "enum": [
+                                        "status",
+                                        "list"
+                                    ]
+                                },
+                                "query": {
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "required": [
+                                "action"
+                            ],
+                            "properties": {
+                                "action": {
+                                    "type": "string",
+                                    "enum": [
+                                        "checkpoint",
+                                        "restart",
+                                        "diagnostics",
+                                        "reset"
+                                    ]
+                                }
+                            },
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "required": [
+                                "action",
+                                "name"
+                            ],
+                            "properties": {
+                                "action": {
+                                    "type": "string",
+                                    "enum": [
+                                        "save",
+                                        "load"
+                                    ]
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "required": [
+                                "action",
+                                "names"
+                            ],
+                            "properties": {
+                                "action": {
+                                    "type": "string",
+                                    "const": "pin"
+                                },
+                                "names": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "minItems": 1
+                                },
+                                "hook": {
+                                    "anyOf": [
+                                        {
+                                            "type": "string",
+                                            "enum": [
+                                                "startup",
+                                                "tool_result"
+                                            ]
+                                        },
+                                        {
+                                            "type": "boolean",
+                                            "const": false
+                                        }
+                                    ],
+                                    "description": "Await self-contained fn(event); tool_result gets {type,toolName,input,status,result?,error?}; hook tool calls do not retrigger; false removes hook"
+                                }
+                            },
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "required": [
+                                "action",
+                                "names"
+                            ],
+                            "properties": {
+                                "action": {
+                                    "type": "string",
+                                    "enum": [
+                                        "unpin",
+                                        "release"
+                                    ]
+                                },
+                                "names": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "minItems": 1
+                                }
+                            },
+                            "additionalProperties": false
+                        },
+                        {
+                            "type": "object",
+                            "required": [
+                                "action",
+                                "query"
+                            ],
+                            "properties": {
+                                "action": {
+                                    "type": "string",
+                                    "const": "prune"
+                                },
+                                "query": {
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
